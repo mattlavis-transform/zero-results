@@ -1,4 +1,5 @@
 import csv
+import sys
 import re
 from pluralizer import Pluralizer
 from spellchecker import SpellChecker
@@ -50,19 +51,32 @@ class InterceptMessage(object):
             template = "Based on your search, we believe you are looking for {term} under {tier} {entity}."
             entity = parts[0].strip()
             term = parts[1].strip()
+            if term.startswith("For"):
+                term = "items " + term
+                term = term.replace("items For", "items for")
+            elif term.startswith("Under "):
+                term = term[6:]
+
+            term = g.decapitalise(term)
             tier = tiers[len(entity)]
             self.message = template.format(term=term, tier=tier, entity=entity)
 
     def replace_hmrc_shortcuts(self):
         # Headings
-        self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4})/([0-9]{4})/([0-9]{4}[^0-9])", "\\1, \\2, \\3 or heading \\4", self.message)
-        self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4})/([0-9]{4}[^0-9])", "\\1, \\2 or heading \\3", self.message)
-        self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4}[^0-9])", "\\1 or heading \\2", self.message)
+        # self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4})/([0-9]{4})/([0-9]{4}[^0-9])", "\\1, \\2, \\3 or heading \\4", self.message)
+        # self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4})/([0-9]{4}[^0-9])", "\\1, \\2 or heading \\3", self.message)
+        # self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4}[^0-9])", "\\1 or heading \\2", self.message)
 
-        # subheadings
-        # self.message = re.sub("([^0-9][0-9]{6})/([0-9]{6})/([0-9]{6})/([0-9]{6}[^0-9])", "\\1, \\2, \\3 or subheading \\4", self.message)
-        # self.message = re.sub("([^0-9][0-9]{6})/([0-9]{6})/([0-9]{6}[^0-9])", "\\1, \\2 or subheading \\3", self.message)
-        # self.message = re.sub("([^0-9][0-9]{6})/([0-9]{6}[^0-9])", "\\1 or subheading \\2", self.message)
+        for i in range(8, -1, -1):
+            to_find = "([^0-9][0-9]{4})/" + ("([0-9]{4})/" * i) + "([0-9]{4}[^0-9])"
+            to_replace = "\\1"
+            for j in range(0, i):
+                to_replace += ", \\" + str(j + 2)
+            to_replace += " or heading \\" + str(i + 2)
+            self.message = re.sub(to_find, to_replace, self.message)
+        #     print(to_find)
+        #     print(to_replace + "\n")
+        # sys.exit()
 
     def check_code_validity(self):
         self.check_headings("heading ([0-9]{4})[^0-9]")
