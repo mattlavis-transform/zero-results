@@ -1,9 +1,9 @@
 import openpyxl
 import xlsxwriter
 import os
+import json
 import sys
 import csv
-import json
 from dotenv import load_dotenv
 from datetime import datetime
 from classes.intercept_message import InterceptMessage
@@ -16,6 +16,7 @@ class Excel(object):
         self.intercept_messages = []
         self.get_config()
         self.load_codes()
+        self.get_country_failures()
 
     def get_config(self):
         # Features - sort results
@@ -82,6 +83,11 @@ class Excel(object):
 
         print(f'{line_count} commodity codes have been read.')
 
+    def get_country_failures(self):
+        filename = os.path.join(self.config_path, "country_failures.json")
+        f = open(filename)
+        g.country_failures = json.load(f)
+
     def read(self):
         print("Reading source Excel file")
         workbook = openpyxl.load_workbook(self.source_file_path)
@@ -97,7 +103,10 @@ class Excel(object):
                 status = row[7].internal_value
                 genuine_term = row[8].internal_value
 
-                term = str(term).strip().lower() if term is not None else ""
+                if "COUNTRY" not in message:
+                    term = str(term).strip().lower() if term is not None else ""
+                else:
+                    term = str(term).strip() if term is not None else ""
                 total_events = int(total_events) if total_events is not None else 0
                 message = str(message).strip() if message is not None else ""
                 status = str(status).strip().lower() if status is not None else ""
@@ -105,7 +114,8 @@ class Excel(object):
 
                 if status in self.statuses_to_include and message != "":
                     intercept_message = InterceptMessage(term, message, genuine_term, self.typos_file_path)
-                    self.intercept_messages.append(intercept_message)
+                    if intercept_message.is_valid:
+                        self.intercept_messages.append(intercept_message)
                     if genuine_term != "":
                         terms = genuine_term.split(",")
                         for i in range(0, len(terms)):
@@ -115,7 +125,8 @@ class Excel(object):
                             term2 = term2.strip()
                             if term2 != "" and term2 != term:
                                 intercept_message = InterceptMessage(term2, message, term2, self.typos_file_path)
-                                self.intercept_messages.append(intercept_message)
+                                if intercept_message.is_valid:
+                                    self.intercept_messages.append(intercept_message)
 
         print("Complete")
 
@@ -167,6 +178,7 @@ class Excel(object):
     def write_erroneous_digits(self):
         my_json = {
             "success_count": len(self.intercept_messages),
+            "country_failures": g.country_failures,
             "erroneous_digits": g.erroneous_digits,
             "incorrect_commodities": g.incorrect_commodities,
             "useless_messages": g.useless_messages,

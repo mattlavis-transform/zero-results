@@ -1,3 +1,4 @@
+import requests
 import csv
 import sys
 import re
@@ -10,6 +11,7 @@ from textblob import Word
 class InterceptMessage(object):
     def __init__(self, term, message, genuine_term, typos_file_path):
         self.term = term
+        self.is_valid = True
         self.is_country = False
         print(self.term)
         self.message = message
@@ -45,12 +47,20 @@ class InterceptMessage(object):
         self.check_usefulness()
 
     def replace_countries(self):
-        template = "https://www.gov.uk/world/organisations/department-for-international-trade-{country}"
+        template = "See more information about trading with [{country}](https://www.gov.uk/world/organisations/department-for-international-trade-{country2})"
         if "COUNTRY" in self.message:
-            self.is_country = True
-            tmp = self.term.lower()
-            tmp = tmp.replace(" ", "-")
-            self.message = template.format(country=tmp)
+            if self.term not in g.country_failures:
+                self.is_country = True
+                tmp = self.term.lower()
+                tmp = tmp.replace(" ", "-")
+                self.message = template.format(country=self.term, country2=tmp)
+                # url = "https://www.gov.uk/world/organisations/department-for-international-trade-" + tmp
+                # request = requests.get(url)
+                # if request.status_code != 200:
+                #     self.is_valid = False
+                #     g.country_failures.append(self.term)
+            else:
+                self.is_valid = False
 
     def deal_with_pipes(self):
         tiers = {
@@ -209,7 +219,7 @@ class InterceptMessage(object):
         self.message = self.message.replace("to commodity", "under commodity")
         self.message = self.message.replace("heading commodity", "commodity")
         self.message = re.sub("\s+", " ", self.message)
-        self.message = self.message.capitalize()
+        # self.message = self.message.capitalize()
 
     def correct_typos(self):
         self.correct_would_depend()

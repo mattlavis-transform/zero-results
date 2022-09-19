@@ -3,6 +3,7 @@ incorrect_commodities = []
 useless_messages = []
 commodities = []
 commodities_dict = {}
+country_failures = []
 typos = []
 
 
