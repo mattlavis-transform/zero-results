@@ -239,7 +239,7 @@ class InterceptMessage(object):
         # self.message = re.sub("dependent if ", "depending whether the item is ", self.message)
 
         self.message = re.sub("([^,]) then ", "\\1, then ", self.message)
-
+        self.message = re.sub(", , ", ", ", self.message)
         self.message = re.sub("\s+", " ", self.message)
         self.message = self.message[0].upper() + self.message[1:]
 
