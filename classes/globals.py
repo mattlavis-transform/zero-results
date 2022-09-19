@@ -1,5 +1,6 @@
 erroneous_digits = []
 incorrect_commodities = []
+useless_messages = []
 commodities = []
 commodities_dict = {}
 typos = []

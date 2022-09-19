@@ -10,6 +10,8 @@ from textblob import Word
 class InterceptMessage(object):
     def __init__(self, term, message, genuine_term, typos_file_path):
         self.term = term
+        self.is_country = False
+        print(self.term)
         self.message = message
         self.genuine_term = genuine_term
         self.typos_file_path = typos_file_path
@@ -22,10 +24,12 @@ class InterceptMessage(object):
         self.term = self.term.strip()
 
     def format_message(self):
+        self.replace_countries()
         self.message = self.message.strip()
         self.message = self.message.replace('"', "'")
         self.message = self.message.replace(' ,', ",")
         self.message = self.message.replace('\xa0', " ")
+
         self.deal_with_pipes()
         if self.message[-1] != ".":
             self.message += "."
@@ -38,6 +42,15 @@ class InterceptMessage(object):
         self.standardise_headings()
         self.check_code_validity()
         self.final_message_tidy()
+        self.check_usefulness()
+
+    def replace_countries(self):
+        template = "https://www.gov.uk/world/organisations/department-for-international-trade-{country}"
+        if "COUNTRY" in self.message:
+            self.is_country = True
+            tmp = self.term.lower()
+            tmp = tmp.replace(" ", "-")
+            self.message = template.format(country=tmp)
 
     def deal_with_pipes(self):
         tiers = {
@@ -51,9 +64,11 @@ class InterceptMessage(object):
             template = "Based on your search, we believe you are looking for {term} under {tier} {entity}."
             entity = parts[0].strip()
             term = parts[1].strip()
+            # if term.startswith("For"):
+            #     term = "items " + term
+            #     term = term.replace("items For", "items for")
             if term.startswith("For"):
-                term = "items " + term
-                term = term.replace("items For", "items for")
+                term = term[4:]
             elif term.startswith("Under "):
                 term = term[6:]
 
@@ -62,11 +77,6 @@ class InterceptMessage(object):
             self.message = template.format(term=term, tier=tier, entity=entity)
 
     def replace_hmrc_shortcuts(self):
-        # Headings
-        # self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4})/([0-9]{4})/([0-9]{4}[^0-9])", "\\1, \\2, \\3 or heading \\4", self.message)
-        # self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4})/([0-9]{4}[^0-9])", "\\1, \\2 or heading \\3", self.message)
-        # self.message = re.sub("([^0-9][0-9]{4})/([0-9]{4}[^0-9])", "\\1 or heading \\2", self.message)
-
         for i in range(8, -1, -1):
             to_find = "([^0-9][0-9]{4})/" + ("([0-9]{4})/" * i) + "([0-9]{4}[^0-9])"
             to_replace = "\\1"
@@ -74,9 +84,6 @@ class InterceptMessage(object):
                 to_replace += ", \\" + str(j + 2)
             to_replace += " or heading \\" + str(i + 2)
             self.message = re.sub(to_find, to_replace, self.message)
-        #     print(to_find)
-        #     print(to_replace + "\n")
-        # sys.exit()
 
     def check_code_validity(self):
         self.check_headings("heading ([0-9]{4})[^0-9]")
@@ -173,6 +180,8 @@ class InterceptMessage(object):
 
         self.message = self.message.replace("PRECISE", "The full commodity code")
         self.message = self.message.replace("TOO GENERIC", "The search term entered is too generic. Please enter the specific type of goods.")
+        self.message = self.message.replace("NOT PHYSICAL", "The search term entered is not a physical item")
+        self.message = re.sub("heading([^ ])", "heading \\1", self.message)
 
     def standardise_headings(self):
         self.message = re.sub(" +", " ", self.message)
@@ -187,16 +196,20 @@ class InterceptMessage(object):
 
         # Correct obvious misapplication of entity types
         self.message = re.sub(" heading ([0-9]{6}[^0-9])", " subheading \\1", self.message)
+        self.message = re.sub(" heading ([0-9]{8}[^0-9])", " subheading \\1", self.message)
         self.message = re.sub(" heading ([0-9]{10})", " commodity \\1", self.message)
         self.message = re.sub(" headings ([0-9]{4}),", " heading \\1,", self.message)
 
     def final_message_tidy(self):
         self.message = self.message.replace("..", ".")
-        self.message = self.message.replace("/", " / ")
+        if "http" not in self.message:
+            self.message = self.message.replace("/", " / ")
         self.message = self.message.replace("to heading", "under heading")
         self.message = self.message.replace("to subheading", "under subheading")
         self.message = self.message.replace("to commodity", "under commodity")
+        self.message = self.message.replace("heading commodity", "commodity")
         self.message = re.sub("\s+", " ", self.message)
+        self.message = self.message.capitalize()
 
     def correct_typos(self):
         self.correct_would_depend()
@@ -206,6 +219,31 @@ class InterceptMessage(object):
                 term_from = row[0]
                 term_to = row[1]
                 self.message = self.message.replace(term_from, term_to)
+
+    def check_usefulness(self):
+        value_count = 0
+        value_count += self.check_contains("chapter [0-9]{1,2}[^0-9]")
+        value_count += self.check_contains("heading [0-9]{4}[^0-9]")
+        value_count += self.check_contains("subheading [0-9]{6}[^0-9]")
+        value_count += self.check_contains("subheading [0-9]{8}[^0-9]")
+        value_count += self.check_contains("commodity [0-9]{10}[^0-9]")
+        value_count += self.check_contains("http")
+        value_count += self.check_contains("too generic")
+        value_count += self.check_contains("too many")
+        value_count += self.check_contains("not a physical item")
+
+        if value_count == 0:
+            obj = {
+                self.term: self.message
+            }
+            g.useless_messages.append(obj)
+
+    def check_contains(self, substring):
+        matches = re.search(substring, self.message, re.IGNORECASE)
+        if matches:
+            return 1
+        else:
+            return 0
 
     def correct_would_depend(self):
         if self.term == "safety footwear":

@@ -103,14 +103,19 @@ class Excel(object):
                 status = str(status).strip().lower() if status is not None else ""
                 genuine_term = str(genuine_term).strip().lower() if genuine_term is not None else ""
 
-                if total_events == 1:
-                    break
                 if status in self.statuses_to_include and message != "":
                     intercept_message = InterceptMessage(term, message, genuine_term, self.typos_file_path)
                     self.intercept_messages.append(intercept_message)
                     if genuine_term != "":
-                        intercept_message = InterceptMessage(genuine_term, message, genuine_term, self.typos_file_path)
-                        self.intercept_messages.append(intercept_message)
+                        terms = genuine_term.split(",")
+                        for i in range(0, len(terms)):
+                            terms[i] = terms[i].strip()
+                        terms = list(set(terms))
+                        for term2 in terms:
+                            term2 = term2.strip()
+                            if term2 != "" and term2 != term:
+                                intercept_message = InterceptMessage(term2, message, term2, self.typos_file_path)
+                                self.intercept_messages.append(intercept_message)
 
         print("Complete")
 
@@ -164,6 +169,7 @@ class Excel(object):
             "success_count": len(self.intercept_messages),
             "erroneous_digits": g.erroneous_digits,
             "incorrect_commodities": g.incorrect_commodities,
+            "useless_messages": g.useless_messages,
             "typos": g.typos
         }
         out_file = open(self.log_file_path, "w")
