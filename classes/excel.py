@@ -47,6 +47,7 @@ class Excel(object):
         self.excel_output_file = os.getenv('EXCEL_OUTPUT')
         now = datetime.now()
         date_string = now.strftime("%Y-%m-%d_%H-%M")
+        date_string = now.strftime("%Y-%m-%d")
 
         self.excel_output_file = self.excel_output_file.replace("{date}", date_string)
         self.excel_path = os.path.join(self.resource_path, "excel")
@@ -113,7 +114,7 @@ class Excel(object):
                 genuine_term = str(genuine_term).strip().lower() if genuine_term is not None else ""
 
                 if status in self.statuses_to_include and message != "":
-                    intercept_message = InterceptMessage(term, message, genuine_term, self.typos_file_path)
+                    intercept_message = InterceptMessage(term, message, self.typos_file_path)
                     if intercept_message.is_valid:
                         self.intercept_messages.append(intercept_message)
                     if genuine_term != "":
@@ -124,7 +125,7 @@ class Excel(object):
                         for term2 in terms:
                             term2 = term2.strip()
                             if term2 != "" and term2 != term:
-                                intercept_message = InterceptMessage(term2, message, term2, self.typos_file_path)
+                                intercept_message = InterceptMessage(term2, message, self.typos_file_path)
                                 if intercept_message.is_valid:
                                     self.intercept_messages.append(intercept_message)
 
@@ -178,7 +179,6 @@ class Excel(object):
     def write_erroneous_digits(self):
         my_json = {
             "success_count": len(self.intercept_messages),
-            "country_failures": g.country_failures,
             "erroneous_digits": g.erroneous_digits,
             "incorrect_commodities": g.incorrect_commodities,
             "useless_messages": g.useless_messages,
