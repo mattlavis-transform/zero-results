@@ -20,6 +20,7 @@ class InterceptMessage(object):
         self.format_term()
         self.format_message()
         self.create_yaml()
+        self.create_yaml_for_prototype()
 
     def format_term(self):
         self.term = self.term.strip()
@@ -303,3 +304,13 @@ class InterceptMessage(object):
         self.yaml += "  " + self.term + ":\n"
         self.yaml += "    title: \"" + self.term + "\"\n"
         self.yaml += "    message: \"" + self.message + "\"\n\n"
+
+    def create_yaml_for_prototype(self):
+        if "\n" not in self.message:
+            self.yaml_for_prototype = "---\n"
+            self.yaml_for_prototype += "term: " + self.term + "\n"
+            self.yaml_for_prototype += "message: |\n"
+            self.yaml_for_prototype += "  " + self.message + "\"\n\n"
+            self.yaml_for_prototype += "...\n\n"
+        else:
+            self.yaml_for_prototype = ""

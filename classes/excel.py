@@ -43,6 +43,9 @@ class Excel(object):
         self.yaml_path = os.path.join(self.resource_path, "yml")
         self.yaml_file_path = os.path.join(self.yaml_path, self.yaml_file)
 
+        # Get YAML file for output
+        self.yaml_file_temp = os.getenv('YAML_FILE_TEMP')
+
         # Get Excel output file file
         self.excel_output_file = os.getenv('EXCEL_OUTPUT')
         now = datetime.now()
@@ -140,6 +143,18 @@ class Excel(object):
                 s += intercept_message.yaml
 
         f = open(self.yaml_file_path, "w")
+        f.write(s)
+        f.close()
+
+    def write_yaml_for_prototype(self):
+        if self.sort_results == 1:
+            self.sort_the_results()
+        s = ""
+        for intercept_message in self.intercept_messages:
+            if intercept_message.yaml != "":
+                s += intercept_message.yaml_for_prototype
+
+        f = open(self.yaml_file_temp, "w")
         f.write(s)
         f.close()
 
