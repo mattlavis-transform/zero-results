@@ -3,9 +3,7 @@ import csv
 import sys
 import re
 from pluralizer import Pluralizer
-from spellchecker import SpellChecker
 import classes.globals as g
-from textblob import Word
 
 
 class InterceptMessage(object):
@@ -299,11 +297,16 @@ class InterceptMessage(object):
         # Chapter 64 Would depend on the material of the soles and uppers and whether waterproof
         self.message = re.sub("([0-9]{2,10})\sWould depend", "\\1. PRECISE would depend", self.message)
 
-    def create_yaml(self):
+    def create_yaml_safe(self):
         self.yaml = ""
         self.yaml += "  " + self.term + ":\n"
         self.yaml += "    title: \"" + self.term + "\"\n"
         self.yaml += "    message: \"" + self.message + "\"\n\n"
+
+    def create_yaml(self):
+        self.yaml = ""
+        self.yaml += self.term + ": "
+        self.yaml += '"' + self.message + '"\n'
 
     def create_yaml_for_prototype(self):
         if "\n" not in self.message:

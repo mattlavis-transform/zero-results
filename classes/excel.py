@@ -137,7 +137,8 @@ class Excel(object):
     def write_yaml(self):
         if self.sort_results == 1:
             self.sort_the_results()
-        s = "en:\n"
+        # s = "en:\n"
+        s = ""
         for intercept_message in self.intercept_messages:
             if intercept_message.yaml != "":
                 s += intercept_message.yaml
